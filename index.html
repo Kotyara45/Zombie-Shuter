@@ -71,15 +71,18 @@
 
         // Player controls with WASD
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'w') player.y -= player.speed;
-            if (event.key === 's') player.y += player.speed;
-            if (event.key === 'a') player.x -= player.speed;
-            if (event.key === 'd') player.x += player.speed;
+            if (event.key === 'w' && player.y - player.speed - player.size > 0) player.y -= player.speed;
+            if (event.key === 's' && player.y + player.speed + player.size < canvas.height) player.y += player.speed;
+            if (event.key === 'a' && player.x - player.speed - player.size > 0) player.x -= player.speed;
+            if (event.key === 'd' && player.x + player.speed + player.size < canvas.width) player.x += player.speed;
         });
 
+        // Shooting bullets towards the click location
         canvas.addEventListener('click', (event) => {
-            const angle = Math.atan2(event.clientY - player.y, event.clientX - player.x);
-            bullets.push({ x: player.x, y: player.y, angle: angle, speed: 7 });
+            const targetX = event.clientX - canvas.getBoundingClientRect().left;
+            const targetY = event.clientY - canvas.getBoundingClientRect().top;
+            const angle = Math.atan2(targetY - player.y, targetX - player.x);
+            bullets.push({ x: player.x, y: player.y, targetX, targetY, angle, speed: 7 });
         });
 
         function setDifficulty(level) {
