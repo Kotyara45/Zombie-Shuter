@@ -13,60 +13,98 @@
             height: 100vh;
             margin: 0;
         }
+        #gameContainer {
+            display: flex;
+        }
+        #gameUI {
+            margin-left: 20px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
         canvas {
             background-color: #000;
             border: 2px solid #fff;
         }
+        button {
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #555;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #777;
+        }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="gameUI">
+            <button onclick="resetGame()">Restart</button>
+            <div>High Score: <span id="highScore">0</span></div>
+            <div>Score: <span id="currentScore">0</span></div>
+            <div>
+                <button onclick="setDifficulty('Easy')">Easy</button>
+                <button onclick="setDifficulty('Normal')">Normal</button>
+                <button onclick="setDifficulty('Hard')">Hard</button>
+            </div>
+        </div>
+    </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        let player = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            size: 20,
-            speed: 5
-        };
-
+        let player = { x: canvas.width / 2, y: canvas.height / 2, size: 20, speed: 5 };
         let bullets = [];
         let zombies = [];
         let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+        let difficulty = 'Easy';
+        let spawnInterval = 3000;
+        let zombiesPerSpawn = 3;
 
-        // Player controls
+        document.getElementById('highScore').innerText = highScore;
+
+        // Player controls with WASD
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'ArrowUp') player.y -= player.speed;
-            if (event.key === 'ArrowDown') player.y += player.speed;
-            if (event.key === 'ArrowLeft') player.x -= player.speed;
-            if (event.key === 'ArrowRight') player.x += player.speed;
+            if (event.key === 'w') player.y -= player.speed;
+            if (event.key === 's') player.y += player.speed;
+            if (event.key === 'a') player.x -= player.speed;
+            if (event.key === 'd') player.x += player.speed;
         });
 
         canvas.addEventListener('click', (event) => {
             const angle = Math.atan2(event.clientY - player.y, event.clientX - player.x);
-            bullets.push({
-                x: player.x,
-                y: player.y,
-                angle: angle,
-                speed: 7
-            });
+            bullets.push({ x: player.x, y: player.y, angle: angle, speed: 7 });
         });
 
-        // Function to create zombies
-        function spawnZombie() {
-            const x = Math.random() > 0.5 ? 0 : canvas.width;
-            const y = Math.random() * canvas.height;
-            zombies.push({
-                x: x,
-                y: y,
-                size: 20,
-                speed: 2
-            });
+        function setDifficulty(level) {
+            difficulty = level;
+            if (level === 'Easy') {
+                spawnInterval = 3000;
+                zombiesPerSpawn = 3;
+            } else if (level === 'Normal') {
+                spawnInterval = 2000;
+                zombiesPerSpawn = 5;
+            } else if (level === 'Hard') {
+                spawnInterval = 1000;
+                zombiesPerSpawn = 9;
+            }
+            resetGame();
         }
 
-        // Update bullet positions
+        function spawnZombie() {
+            for (let i = 0; i < zombiesPerSpawn; i++) {
+                const x = Math.random() > 0.5 ? 0 : canvas.width;
+                const y = Math.random() * canvas.height;
+                zombies.push({ x: x, y: y, size: 20, speed: 2 });
+            }
+        }
+
         function updateBullets() {
             bullets = bullets.filter(bullet => bullet.x > 0 && bullet.x < canvas.width && bullet.y > 0 && bullet.y < canvas.height);
             bullets.forEach(bullet => {
@@ -75,7 +113,6 @@
             });
         }
 
-        // Update zombie positions
         function updateZombies() {
             zombies.forEach(zombie => {
                 const angle = Math.atan2(player.y - zombie.y, player.x - zombie.x);
@@ -84,7 +121,6 @@
             });
         }
 
-        // Check for collisions
         function checkCollisions() {
             bullets.forEach((bullet, bulletIndex) => {
                 zombies.forEach((zombie, zombieIndex) => {
@@ -93,30 +129,32 @@
                         bullets.splice(bulletIndex, 1);
                         zombies.splice(zombieIndex, 1);
                         score += 1;
+                        document.getElementById('currentScore').innerText = score;
+                        if (score > highScore) {
+                            highScore = score;
+                            localStorage.setItem('highScore', highScore);
+                            document.getElementById('highScore').innerText = highScore;
+                        }
                     }
                 });
             });
 
-            zombies.forEach((zombie) => {
+            zombies.forEach(zombie => {
                 const distance = Math.hypot(player.x - zombie.x, player.y - zombie.y);
                 if (distance < zombie.size + player.size) {
                     alert(`Game Over! Your score: ${score}`);
-                    window.location.reload();
+                    resetGame();
                 }
             });
         }
 
-        // Render objects on screen
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw player
             ctx.fillStyle = 'blue';
             ctx.beginPath();
             ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
             ctx.fill();
 
-            // Draw bullets
             ctx.fillStyle = 'red';
             bullets.forEach(bullet => {
                 ctx.beginPath();
@@ -124,21 +162,14 @@
                 ctx.fill();
             });
 
-            // Draw zombies
             ctx.fillStyle = 'green';
             zombies.forEach(zombie => {
                 ctx.beginPath();
                 ctx.arc(zombie.x, zombie.y, zombie.size, 0, Math.PI * 2);
                 ctx.fill();
             });
-
-            // Draw score
-            ctx.fillStyle = 'white';
-            ctx.font = '20px Arial';
-            ctx.fillText(`Score: ${score}`, 10, 20);
         }
 
-        // Main game loop
         function gameLoop() {
             updateBullets();
             updateZombies();
@@ -147,8 +178,17 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Start the game
-        setInterval(spawnZombie, 1000);
+        function resetGame() {
+            player = { x: canvas.width / 2, y: canvas.height / 2, size: 20, speed: 5 };
+            bullets = [];
+            zombies = [];
+            score = 0;
+            document.getElementById('currentScore').innerText = score;
+            clearInterval(spawnIntervalId);
+            spawnIntervalId = setInterval(spawnZombie, spawnInterval);
+        }
+
+        let spawnIntervalId = setInterval(spawnZombie, spawnInterval);
         gameLoop();
     </script>
 </body>
